@@ -1,3 +1,4 @@
+#latest 1/6/2025
 import RPi.GPIO as GPIO
 import time
 
@@ -7,12 +8,12 @@ def forward():
     GPIO.output(motorL_IN3, GPIO.LOW)
     GPIO.output(motorL_IN4, GPIO.HIGH)
     GPIO.output(motorL_ENB, GPIO.HIGH)
-    pwmL.ChangeDutyCycle(10)
+    pwmL.ChangeDutyCycle(dutyCycle)
     #right
     GPIO.output(motorR_IN1, GPIO.LOW)
     GPIO.output(motorR_IN2, GPIO.HIGH)
     GPIO.output(motorR_ENA, GPIO.HIGH)
-    pwmR.ChangeDutyCycle(10)
+    pwmR.ChangeDutyCycle(dutyCycle)
     
 def backward():
     print('backward')
@@ -20,12 +21,12 @@ def backward():
     GPIO.output(motorL_IN3, GPIO.HIGH)
     GPIO.output(motorL_IN4, GPIO.LOW)
     GPIO.output(motorL_ENB, GPIO.HIGH)
-    pwmL.ChangeDutyCycle(10)
+    pwmL.ChangeDutyCycle(dutyCycle)
     #right
     GPIO.output(motorR_IN1, GPIO.HIGH)
     GPIO.output(motorR_IN2, GPIO.LOW)
     GPIO.output(motorR_ENA, GPIO.HIGH)
-    pwmR.ChangeDutyCycle(10)
+    pwmR.ChangeDutyCycle(dutyCycle)
     
 def left():
     print('left')
@@ -33,12 +34,12 @@ def left():
     GPIO.output(motorL_IN3, GPIO.HIGH)
     GPIO.output(motorL_IN4, GPIO.LOW)
     GPIO.output(motorL_ENB, GPIO.HIGH)
-    pwmL.ChangeDutyCycle(10)
+    pwmL.ChangeDutyCycle(dutyCycle)
     #right
     GPIO.output(motorR_IN1, GPIO.LOW)
     GPIO.output(motorR_IN2, GPIO.HIGH)
     GPIO.output(motorR_ENA, GPIO.HIGH)
-    pwmR.ChangeDutyCycle(10)
+    pwmR.ChangeDutyCycle(dutyCycle)
     
 def right():
     print('right')
@@ -46,12 +47,12 @@ def right():
     GPIO.output(motorL_IN3, GPIO.LOW)
     GPIO.output(motorL_IN4, GPIO.HIGH)
     GPIO.output(motorL_ENB, GPIO.HIGH)
-    pwmL.ChangeDutyCycle(10)
+    pwmL.ChangeDutyCycle(dutyCycle)
     #right
     GPIO.output(motorR_IN1, GPIO.HIGH)
     GPIO.output(motorR_IN2, GPIO.LOW)
     GPIO.output(motorR_ENA, GPIO.HIGH)
-    pwmR.ChangeDutyCycle(10)
+    pwmR.ChangeDutyCycle(dutyCycle)
     
 def stop():
     print('stop')
@@ -120,7 +121,7 @@ def loop():
     # stop forward backward left right
     current_state = ""
     x=0
-    k = True
+    # k = True
     while x<=10:
         distanceF = getdistance()
         distanceL = getdistanceleft()
@@ -197,7 +198,8 @@ if __name__ == '__main__':
         #mian file
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
-
+        dutyCycle = 13
+        
         #left
         motorL_IN3 = 3
         motorL_IN4 = 5
@@ -259,3 +261,42 @@ if __name__ == '__main__':
        pass
     finally:
         GPIO.cleanup
+        
+def moveingByDistance():
+    df = getdistance()
+    dl = getdistanceleft()
+    dr = getdistanceright()
+    
+    if (df < dl) and (df < dr):
+        smallest_num = df
+        # forward()
+    elif (dl < df) and (dl < dr):
+        smallest_num = dl
+        # left()
+    else:
+        smallest_num = dr
+        # right()
+        
+def changeMode():
+    # test
+    # mode 1 = auto, 2 = , 3 = 
+    mode = 1
+    mode1Btn = 36
+    mode2Btn = 38
+    mode3Btn = 40
+    GPIO.setup(mode1Btn, GPIO.IN)
+    GPIO.setup(mode2Btn, GPIO.IN)
+    GPIO.setup(mode3Btn, GPIO.IN)
+    if (GPIO.input(mode1Btn) == True): 
+        mode = 1
+    elif (GPIO.input(mode2Btn) == True): 
+        mode = 2
+    else:
+        mode = 3
+        
+    if (mode == 1):
+        mode = 1
+    elif (mode == 2):
+        mode = 2
+    else:
+        mode = 3
