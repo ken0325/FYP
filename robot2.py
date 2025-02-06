@@ -1,4 +1,4 @@
-#latest 1/10/2025
+#latest 1/27/2025
 import RPi.GPIO as GPIO
 import time
 import threading
@@ -201,8 +201,8 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 
 # pwm DutyCycle (control motor current, speed)
-dutyCycle = 13
-vacuumMotorDutyCycle = 90
+dutyCycle = 25
+vacuumMotorDutyCycle = 100
 
 # left motor
 motorL_IN3 = 3
