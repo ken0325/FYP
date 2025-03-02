@@ -1,7 +1,66 @@
-#latest 2/9/2025
+#latest 2/3/2025
+from flask import Flask, render_template, request
 import RPi.GPIO as GPIO
 import time
 import threading
+
+# GPIO setup
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BOARD)
+
+app = Flask(__name__)
+
+# pwm DutyCycle (control motor current, speed)
+dutyCycle = 15
+
+# driving motor
+motorL_IN3 = 3
+motorL_IN4 = 5
+motorL_ENB = 7
+GPIO.setup(motorL_IN3, GPIO.OUT)
+GPIO.setup(motorL_IN4, GPIO.OUT)
+GPIO.setup(motorL_ENB, GPIO.OUT)
+pwmL = GPIO.PWM(motorL_ENB, 100)
+pwmL.start(0)
+motorR_IN1 = 10
+motorR_IN2 = 12
+motorR_ENA = 8
+GPIO.setup(motorR_IN1, GPIO.OUT)
+GPIO.setup(motorR_IN2, GPIO.OUT)
+GPIO.setup(motorR_ENA, GPIO.OUT)
+pwmR = GPIO.PWM(motorR_ENA, 100)
+pwmR.start(0)
+
+# vacuum motor
+motorV_ENA = 33
+GPIO.setup(motorV_ENA, GPIO.OUT)
+pwmV = GPIO.PWM(motorV_ENA, 100)
+pwmV.start(0)
+
+# hcrs04
+trig = 15
+GPIO.setup(trig, GPIO.OUT, initial=GPIO.LOW)
+echo = 16
+GPIO.setup(echo, GPIO.IN)
+trig_L = 21
+GPIO.setup(trig_L, GPIO.OUT, initial=GPIO.LOW)
+echo_L = 22
+GPIO.setup(echo_L, GPIO.IN)
+trig_R = 23
+GPIO.setup(trig_R, GPIO.OUT, initial=GPIO.LOW)
+echo_R = 24
+GPIO.setup(echo_R, GPIO.IN)
+
+# PWM setup
+pwmL = GPIO.PWM(motorL_ENB, 100)
+pwmR = GPIO.PWM(motorR_ENA, 100)
+pwmV = GPIO.PWM(motorV_ENA, 100)
+pwmL.start(0)
+pwmR.start(0)
+pwmV.start(0)
+
+currentMode = 1
+running_thread = None
 
 def startVacuumMotor():
     GPIO.output(motorV_ENA, GPIO.HIGH)
@@ -18,7 +77,6 @@ def test_start_stop_vacuunMotor():
     stopVacuumMotor()
     
 def forward():
-    print('forward')
     #left
     GPIO.output(motorL_IN3, GPIO.LOW)
     GPIO.output(motorL_IN4, GPIO.HIGH)
@@ -31,7 +89,6 @@ def forward():
     pwmR.ChangeDutyCycle(dutyCycle)
     
 def backward():
-    print('backward')
     #left
     GPIO.output(motorL_IN3, GPIO.HIGH)
     GPIO.output(motorL_IN4, GPIO.LOW)
@@ -44,7 +101,6 @@ def backward():
     pwmR.ChangeDutyCycle(dutyCycle)
     
 def left():
-    print('left')
     #left
     GPIO.output(motorL_IN3, GPIO.HIGH)
     GPIO.output(motorL_IN4, GPIO.LOW)
@@ -57,7 +113,6 @@ def left():
     pwmR.ChangeDutyCycle(dutyCycle)
     
 def right():
-    print('right')
     #left
     GPIO.output(motorL_IN3, GPIO.LOW)
     GPIO.output(motorL_IN4, GPIO.HIGH)
@@ -70,7 +125,6 @@ def right():
     pwmR.ChangeDutyCycle(dutyCycle)
     
 def stop():
-    print('stop')
     #left
     GPIO.output(motorL_IN3, GPIO.LOW)
     GPIO.output(motorL_IN4, GPIO.LOW)
@@ -98,8 +152,7 @@ def getdistance():
         pass
     t2 = time.time()
     d = round(((t2-t1)*34300)/2, 2)
-    # print(d)
-    print("center distance " + str(d))
+    # print("center distance " + str(d))
     return d
 
 def getdistanceleft():
@@ -113,8 +166,7 @@ def getdistanceleft():
         pass
     t2 = time.time()
     d_L = round(((t2-t1)*34300)/2, 2)
-    # print(d_L)
-    print("left distance " + str(d_L))
+    # print("left distance " + str(d_L))
     return d_L
 
 def getdistanceright():
@@ -128,8 +180,7 @@ def getdistanceright():
         pass
     t2 = time.time()
     d_R = round(((t2-t1)*34300)/2, 2)
-    # print(d_R)
-    print("right distance " + str(d_R))
+    # print("right distance " + str(d_R))
     return d_R
 
 def loop():
@@ -204,13 +255,45 @@ def loop():
                 forward()
                 current_state = "forward"
 
+
+# test
+
+@app.route('/autoMode')
+def autoMode():
+    print('a')
+    
+@app.route('/manualMode')
+def autoMode():
+    print('a')
+    
+@app.route('/move/<direction>', methods=['POST'])
+def move_robot(direction):
+    if direction == 'forward':
+        forward()
+    elif direction == 'backward':
+        backward()
+    return '', 204  # No Content
+
+@app.route('/move/forward', methods=['POST'])
+def move_forward():
+    forward()  # 控制機器人向前
+    return '', 204  # No Content
+
+@app.route('/stop', methods=['POST'])
+def stop_robot():
+    stop()  # 停止機器人
+    return '', 204  # No Content
+
+# test
+
 def start_initial_function():
     global running_thread
     print("程序啟動，執行按鈕 1 的功能。")
     running_thread = threading.Thread(target=run_button_1_function)
     running_thread.start()
 
-def mode1Btn_callback(channel):
+@app.route('/start')
+def mode1Btn_callback():
     global currentMode, running_thread
     if currentMode != 1:
         currentMode = 1
@@ -223,15 +306,19 @@ def mode1Btn_callback(channel):
         running_thread.start()
     else:
         print('button 1 function already')
-        return
-    
+        return render_template('index.html')
+    return render_template('index.html')
+
 def run_button_1_function():
     print('button 1 function')
     startVacuumMotor()
+    pwmL.start(0)
+    pwmR.start(0)
     time.sleep(1)
     loop()
-        
-def mode2Btn_callback(channel):
+
+@app.route('/pause')
+def mode2Btn_callback():
     global currentMode, running_thread
     if currentMode != 2:
         currentMode = 2
@@ -244,100 +331,56 @@ def mode2Btn_callback(channel):
         running_thread.start()
     else:
         print('button 2 function already')
-        return
+        return render_template('index.html')
+    return render_template('index.html')
     
 def run_button_2_function():
-    global dutyCycle
     print('button 2 function')
-    dutyCycle = 0
     stop()
     pwmL.stop()
     pwmR.stop()
-    
     time.sleep(1)
     stopVacuumMotor()
 
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BOARD)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# pwm DutyCycle (control motor current, speed)
-dutyCycle = 25
+@app.route('/vacuum', methods=['POST'])
+def set_control_vacuum():
+    power = request.form.get('power', type=int)
+    if power is not None:
+        if power == 49:
+            pwmV.ChangeDutyCycle(0)
+        else:
+            pwmV.ChangeDutyCycle(power)
+    else:
+        print('Power value is None!')
+    return render_template('index.html')
 
-# left motor
-motorL_IN3 = 3
-motorL_IN4 = 5
-motorL_ENB = 7
-GPIO.setup(motorL_IN3, GPIO.OUT)
-GPIO.setup(motorL_IN4, GPIO.OUT)
-GPIO.setup(motorL_ENB, GPIO.OUT)
-
-# right motor
-motorR_IN1 = 10
-motorR_IN2 = 12
-motorR_ENA = 8
-GPIO.setup(motorR_IN1, GPIO.OUT)
-GPIO.setup(motorR_IN2, GPIO.OUT)
-GPIO.setup(motorR_ENA, GPIO.OUT)
-
-pwmL = GPIO.PWM(motorL_ENB, 100)
-pwmR = GPIO.PWM(motorR_ENA, 100)
-pwmL.start(0)
-pwmR.start(0)
-
-# vacuum motor
-motorV_ENA = 33
-GPIO.setup(motorV_ENA, GPIO.OUT)
-pwmV = GPIO.PWM(motorV_ENA, 100)
-pwmV.start(0)
-
-# hcrs04
-trig = 15
-GPIO.setup(trig, GPIO.OUT, initial=GPIO.LOW)
-echo = 16
-GPIO.setup(echo, GPIO.IN)
-
-trig_L = 21
-GPIO.setup(trig_L, GPIO.OUT, initial=GPIO.LOW)
-echo_L = 22
-GPIO.setup(echo_L, GPIO.IN)
-
-trig_R = 23
-GPIO.setup(trig_R, GPIO.OUT, initial=GPIO.LOW)
-echo_R = 24
-GPIO.setup(echo_R, GPIO.IN)
-
-# mode button
-mode1Btn = 32
-mode2Btn = 36
-GPIO.setup(mode1Btn, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(mode2Btn, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-currentMode = 1
-running_thread = None
-        
-try:
-    GPIO.add_event_detect(mode1Btn, GPIO.FALLING, callback=mode1Btn_callback, bouncetime=300)
-    GPIO.add_event_detect(mode2Btn, GPIO.FALLING, callback=mode2Btn_callback, bouncetime=300)
-    
-    start_initial_function()
-    
-    while True:
-        time.sleep(1)
-    
-except KeyboardInterrupt:
-    print('Measurement stopped by User')
-    dutyCycle = 0
-    stop()
-    pwmL.stop()
-    pwmR.stop()
-    stopVacuumMotor()  # 確保馬達停止
-    GPIO.cleanup()  # 清理 GPIO
-    exit()
-    pass
-finally:
-    dutyCycle = 0
-    stop()
-    pwmL.stop()
-    pwmR.stop()
-    stopVacuumMotor()
+@app.route('/cleanup')
+def cleanup():
     GPIO.cleanup()
-    exit()
+    return "GPIO cleaned up!"
+
+if __name__ == '__main__':    
+    start_initial_function()
+        
+    try:
+        app.run(host='0.0.0.0', port=5000)
+    except KeyboardInterrupt:
+        print('Measurement stopped by User')
+        stop()
+        pwmL.stop()
+        pwmR.stop()
+        stopVacuumMotor()
+        GPIO.cleanup()
+        exit()
+        pass
+    finally:
+        stop()
+        pwmL.stop()
+        pwmR.stop()
+        stopVacuumMotor()
+        GPIO.cleanup()
+        exit()

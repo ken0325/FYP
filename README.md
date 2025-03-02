@@ -22,3 +22,12 @@ sudo apt update && sudo apt install --only-upgrade rpi-connect
 
 sudo apt remove python3-rpi.gpio
 sudo apt install python3-rpi-lgpio
+
+sudo apt-get install python-flask
+
+flask run
+
+sudo apt-get install gevent pywsgi 
+
+
+sudo apt-get install gunicorn
