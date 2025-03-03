@@ -255,6 +255,37 @@ def loop():
                 forward()
                 current_state = "forward"
 
+
+# test
+
+@app.route('/autoMode')
+def autoMode():
+    print('a')
+    
+@app.route('/manualMode')
+def autoMode():
+    print('a')
+    
+@app.route('/move/<direction>', methods=['POST'])
+def move_robot(direction):
+    if direction == 'forward':
+        forward()
+    elif direction == 'backward':
+        backward()
+    return '', 204  # No Content
+
+@app.route('/move/forward', methods=['POST'])
+def move_forward():
+    forward()  # 控制機器人向前
+    return '', 204  # No Content
+
+@app.route('/stop', methods=['POST'])
+def stop_robot():
+    stop()  # 停止機器人
+    return '', 204  # No Content
+
+# test
+
 def start_initial_function():
     global running_thread
     print("程序啟動，執行按鈕 1 的功能。")
@@ -286,7 +317,7 @@ def run_button_1_function():
     time.sleep(1)
     loop()
 
-@app.route('/stop')
+@app.route('/pause')
 def mode2Btn_callback():
     global currentMode, running_thread
     if currentMode != 2:

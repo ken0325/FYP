@@ -10,7 +10,18 @@
     <h1>Control Raspberry Pi GPIO</h1>
     <h2>Mode</h2>
     <button onclick="start()">start</button>
-    <button onclick="stop()">stop</button>
+    <button onclick="pause()">pause</button>
+
+    <!-- test -->
+
+    <button onclick="autoMode()">Auto Mode</button>
+    <button onclick="manualMode()">Manual Mode</button>
+    <!-- <button onclick="move('forward')">Forward</button>
+    <button onclick="move('backward')">Backward</button> -->
+
+    <h1>Control Robot</h1>
+    <button id="forwardBtn">Forward</button>
+    <!-- test -->
 
     <h2>Vacuum Control</h2>
     <label for="power">Set Vacuum Power (50-100):</label>
@@ -34,14 +45,55 @@
           },
         });
       }
-      function stop() {
-        fetch(`/stop`, {
+      function pause() {
+        fetch(`/pause`, {
           method: "GET",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
         });
       }
+
+      //   test
+      function autoMode() {
+        fetch(`/autoMode`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        });
+      }
+      function manualMode() {
+        fetch(`/manualMode`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        });
+      }
+
+      //   function move(direction) {
+      //     fetch(`/move/${direction}`, { method: 'POST' });
+      //   }
+      let forwardInterval;
+
+      function moveForward() {
+        forwardInterval = setInterval(() => {
+          fetch("/move/forward", { method: "POST" });
+        }, 100); // 每 100 毫秒發送一次請求
+      }
+
+      function stop() {
+        clearInterval(forwardInterval); // 停止發送請求
+        fetch("/stop", { method: "POST" }); // 停止機器人
+      }
+
+      const forwardBtn = document.getElementById("forwardBtn");
+      forwardBtn.addEventListener("mousedown", moveForward);
+      forwardBtn.addEventListener("mouseup", stop);
+      forwardBtn.addEventListener("mouseleave", stop); // 當鼠標離開按鈕時停止
+
+      // test
 
       function updateOutput(value) {
         const output = document.querySelector("output");
