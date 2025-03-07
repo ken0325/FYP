@@ -20,15 +20,15 @@ motorL_ENB = 7
 GPIO.setup(motorL_IN3, GPIO.OUT)
 GPIO.setup(motorL_IN4, GPIO.OUT)
 GPIO.setup(motorL_ENB, GPIO.OUT)
-pwmL = GPIO.PWM(motorL_ENB, 100)
-pwmL.start(0)
 motorR_IN1 = 10
 motorR_IN2 = 12
 motorR_ENA = 8
 GPIO.setup(motorR_IN1, GPIO.OUT)
 GPIO.setup(motorR_IN2, GPIO.OUT)
 GPIO.setup(motorR_ENA, GPIO.OUT)
+pwmL = GPIO.PWM(motorL_ENB, 100)
 pwmR = GPIO.PWM(motorR_ENA, 100)
+pwmL.start(0)
 pwmR.start(0)
 
 # vacuum motor
@@ -51,14 +51,10 @@ GPIO.setup(trig_R, GPIO.OUT, initial=GPIO.LOW)
 echo_R = 24
 GPIO.setup(echo_R, GPIO.IN)
 
-# PWM setup
-pwmL = GPIO.PWM(motorL_ENB, 100)
-pwmR = GPIO.PWM(motorR_ENA, 100)
-pwmV = GPIO.PWM(motorV_ENA, 100)
-pwmL.start(0)
-pwmR.start(0)
-pwmV.start(0)
-
+mode1Btn = 32
+mode2Btn = 36
+GPIO.setup(mode1Btn, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(mode2Btn, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 currentMode = 1
 running_thread = None
 
