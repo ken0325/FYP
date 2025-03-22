@@ -11,7 +11,7 @@ GPIO.setmode(GPIO.BOARD)
 app = Flask(__name__)
 
 # pwm DutyCycle (control motor current, speed)
-dutyCycle = 15
+dutyCycle = 20
 
 # driving motor
 motorL_IN3 = 3
@@ -62,6 +62,19 @@ pwmV.start(0)
 currentMode = 1
 is_pause = False
 running_thread = None
+
+# warnings led
+is_error = False
+LED = 40
+GPIO.setup(LED, GPIO.OUT)
+
+def warnings():
+    global is_error
+    while is_error == True:
+        time.sleep(1)
+        GPIO.output(LED, GPIO.HIGH)
+        time.sleep(1)
+        GPIO.output(LED, GPIO.LOW)
 
 def start_vacuum_motor():
     pwmV.start(0)
@@ -404,6 +417,7 @@ def run_function_2():
     print('this is mode 2')
     start_motors()
     start_vacuum_motor()
+    time.sleep(1)
     mode2()
 
 if __name__ == '__main__':
