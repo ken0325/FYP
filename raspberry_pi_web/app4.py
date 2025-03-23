@@ -1,5 +1,5 @@
-#latest 9/3/2025
-from flask import Flask, render_template, request
+#latest 23/3/2025
+from flask import Flask, render_template, request, jsonify
 import RPi.GPIO as GPIO
 import time
 import threading
@@ -79,7 +79,7 @@ def warnings():
         time.sleep(1)
         GPIO.output(LED, GPIO.LOW)
         
-@app.route('/stopError')
+@app.route('/stopError', method=['POST'])
 def stopWarnings():
     global is_pause, is_error
     if is_pause == True and is_error == True:
@@ -88,9 +88,9 @@ def stopWarnings():
         GPIO.output(LED, GPIO.LOW)
         start_vacuum_motor()
         start_motors()
+        return jsonify(success=True, message="The operation was successful and normal operation has been resumed.")
     else:
-        print('no error')
-    return render_template('index.html')
+        return jsonify(success=False, message="There is no any errors!")
 
 def start_vacuum_motor():
     pwmV.start(0)

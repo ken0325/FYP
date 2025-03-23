@@ -1,4 +1,4 @@
-<!-- latest 9/3/2025 -->
+<!-- latest 23/3/2025 -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -22,8 +22,14 @@
   <body>
     <div class="container mt-4">
       <div
+        id="successMessages"
+        class="alert alert-success"
+        role="alert"
+        style="display: none"
+      ></div>
+      <div
         id="errorMessages"
-        class="alert alert-primary"
+        class="alert alert-danger"
         role="alert"
         style="display: none"
       ></div>
@@ -115,13 +121,41 @@
       }
 
       function stopError() {
-        fetch(`/stopError`).then(handleResponse);
+        // fetch(`/stopError`).then(handleResponse);
+        fetch(`/stopError`, { method: 'POST' }).then(handleResponse);
       }
+
+      // function handleResponse(response) {
+      //   if (!response.ok) {
+      //     showError("Request failed with status: " + response.status);
+      //   }
+      // }
 
       function handleResponse(response) {
         if (!response.ok) {
-          showError("Request failed with status: " + response.status);
+            showError("Request failed with status: " + response.status);
+            return;
         }
+
+        response.json().then(data => {
+            if (data.success) {
+                // 成功時顯示成功訊息
+                showSuccess(data.message);
+            } else {
+                // 失敗時顯示錯誤訊息
+                showError(data.message);
+            }
+        });
+    }
+
+      function showSuccess(message, duration = 5000) {
+        const successDiv = document.getElementById("successMessages");
+        successDiv.textContent = message;
+        successDiv.style.display = "block";
+
+        setTimeout(() => {
+          successDiv.style.display = "none";
+        }, duration);
       }
 
       function showError(message, duration = 5000) {
