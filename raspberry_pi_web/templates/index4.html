@@ -55,6 +55,13 @@
           class="form-range"
           oninput="updateOutput(this.value)"
         />
+        <button class="btn btn-primary me-2" onclick="startVacuum()">Start Vacuum</button>
+        <button class="btn btn-warning me-2" onclick="stopVacuum()">Stop Vacuum</button>
+      </div>
+
+      <h2 class="mt-4">Error Control</h2>
+      <div class="mb-3">
+        <button class="btn btn-primary me-2" onclick="stopError()">Stop Error</button>
       </div>
     </div>
 
@@ -98,6 +105,17 @@
             .catch((error) => showError("Error: " + error));
           // .catch((error) => console.error("Error:", error));
         }, 300); // Send request after 300 milliseconds
+      }
+
+      function startVacuum() {
+        fetch(`/startVacuum`).then(handleResponse);
+      }
+      function stopVacuum() {
+        fetch(`/stopVacuum`).then(handleResponse);
+      }
+
+      function stopError() {
+        fetch(`/stopError`).then(handleResponse);
       }
 
       function handleResponse(response) {

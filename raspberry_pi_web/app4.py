@@ -3,6 +3,7 @@ from flask import Flask, render_template, request
 import RPi.GPIO as GPIO
 import time
 import threading
+from threading import Timer
 
 # GPIO setup
 GPIO.setwarnings(False)
@@ -12,6 +13,8 @@ app = Flask(__name__)
 
 # pwm DutyCycle (control motor current, speed)
 dutyCycle = 20
+
+vacuumMotorDutyCycle = 100
 
 # driving motor
 motorL_IN3 = 3
@@ -75,12 +78,26 @@ def warnings():
         GPIO.output(LED, GPIO.HIGH)
         time.sleep(1)
         GPIO.output(LED, GPIO.LOW)
+        
+@app.route('/stopError')
+def stopWarnings():
+    global is_pause, is_error
+    if is_pause == True and is_error == True:
+        is_error = False
+        is_pause = False
+        GPIO.output(LED, GPIO.LOW)
+        start_vacuum_motor()
+        start_motors()
+    else:
+        print('no error')
+    return render_template('index.html')
 
 def start_vacuum_motor():
     pwmV.start(0)
     # print("Start vacuum motor")
     GPIO.output(motorV_ENA, GPIO.HIGH)
-    pwmV.ChangeDutyCycle(100)
+    # pwmV.ChangeDutyCycle(100)
+    pwmV.ChangeDutyCycle(vacuumMotorDutyCycle)
 
 def stop_vacuum_motor():
     # print("stop vacuum motor")
@@ -245,11 +262,24 @@ def pasuse():
 
 @app.route('/vacuum', methods=['POST'])
 def set_control_vacuum():
+    global vacuumMotorDutyCycle
     power = request.form.get('power', type=int)
     if power is not None:
-        pwmV.ChangeDutyCycle(0 if power == 49 else power)
+        vacuumMotorDutyCycle = power
+        # pwmV.ChangeDutyCycle(0 if power == 49 else power)
+        pwmV.ChangeDutyCycle(power)
     else:
         print('Power value is None!')
+    return render_template('index.html')
+
+@app.route('/startVacuum')
+def startVacuum():
+    start_vacuum_motor()
+    return render_template('index.html')
+
+@app.route('/stopVacuum')
+def stopVacuum():
+    stop_vacuum_motor()
     return render_template('index.html')
 
 @app.route('/changeToMode1')
@@ -288,6 +318,32 @@ def mode2Btn_callback():
         return render_template('index.html')
     return render_template('index.html')
 
+distance_data = []
+def measure_distance(fDistance, leftDistance, rightDistance):
+    global is_pause, is_error
+    distance_data.append(fDistance)
+    distance_data.append(leftDistance)
+    distance_data.append(rightDistance)
+    # t = threading.Timer(60, measure_distance)
+    if distance_data and is_error == False:
+        average_distance = sum(distance_data) / len(distance_data)
+        if average_distance <= 10:
+            print('error')
+            stop_motors()
+            stop_vacuum_motor()
+            is_pause = True
+        else:
+            print('no error')
+            
+        if len(distance_data) >= 30:
+            distance_data.clear()
+        
+        # Timer(60, measure_distance).start()
+        # t.start()
+    # else:
+        # t.cancel()
+        
+
 def mode1():
     global is_pause
     # stop forward backward left right
@@ -296,9 +352,9 @@ def mode1():
         distanceF = getdistance()
         distanceL = getdistanceleft()
         distanceR = getdistanceright()
-        print("\n" + current_state)
+        # print("\n" + current_state)
         time.sleep(1)
-        
+        measure_distance(distanceF, distanceL, distanceR)
         if distanceF <= 20 or distanceL <= 20 or distanceR <= 20:
             if distanceF <= 20:
                 if distanceL <= 20 and distanceR <= 20:
@@ -373,37 +429,39 @@ def mode2():
             print('forward')
             maxDistance = distanceF
             forward()
+            current_state = "forward"
         elif (distanceL > distanceF) and (distanceL > distanceR):
             print('left')
             maxDistance = distanceL
             left()
+            current_state = "left"
         else:
             print('right')
             maxDistance = distanceR
             right()
+            current_state = "right"
             
-        # if maxDistance > 50:
-        #     target_speed = 100  # 距離大於50 cm時，設定最大速度
-        # elif maxDistance > 30:
-        #     target_speed = 70   # 距離在30-50 cm之間，設定較低速度
-        # elif maxDistance > 10:
-        #     target_speed = 30   # 距離在10-30 cm之間，設定更低速度
-        # else:
-        #     target_speed = 0    # 距離小於10 cm時，停止
+        if maxDistance > 50:
+            target_speed = 100  # 距離大於50 cm時，設定最大速度
+        elif maxDistance > 30:
+            target_speed = 70   # 距離在30-50 cm之間，設定較低速度
+        elif maxDistance > 10:
+            target_speed = 30   # 距離在10-30 cm之間，設定更低速度
+        else:
+            target_speed = 0    # 距離小於10 cm時，停止
 
-        # # 平滑調整速度
-        # if current_speed < target_speed:
-        #     current_speed += 5  # 每次增加5%
-        # elif current_speed > target_speed:
-        #     current_speed -= 5  # 每次減少5%
+        # 平滑調整速度
+        if current_speed < target_speed:
+            current_speed += 5  # 每次增加5%
+        elif current_speed > target_speed:
+            current_speed -= 5  # 每次減少5%
 
-        # # 確保速度在0到100範圍內
-        # current_speed = max(0, min(100, current_speed))
+        # 確保速度在0到100範圍內
+        current_speed = max(0, min(100, current_speed))
         
-        # pwmL.ChangeDutyCycle(current_speed)  # 更新PWM信號
-        # pwmR.ChangeDutyCycle(current_speed)  # 更新PWM信號
+        pwmL.ChangeDutyCycle(current_speed)  # 更新PWM信號
+        pwmR.ChangeDutyCycle(current_speed)  # 更新PWM信號
         
-        # stop_motors()
         time.sleep(0.1)
 
 def run_function_1():
