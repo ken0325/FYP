@@ -55,12 +55,12 @@ echo_R = 24
 GPIO.setup(echo_R, GPIO.IN)
 
 # PWM setup
-pwmL = GPIO.PWM(motorL_ENB, 100)
-pwmR = GPIO.PWM(motorR_ENA, 100)
-pwmV = GPIO.PWM(motorV_ENA, 100)
-pwmL.start(0)
-pwmR.start(0)
-pwmV.start(0)
+# pwmL = GPIO.PWM(motorL_ENB, 100)
+# pwmR = GPIO.PWM(motorR_ENA, 100)
+# pwmV = GPIO.PWM(motorV_ENA, 100)
+# pwmL.start(0)
+# pwmR.start(0)
+# pwmV.start(0)
 
 currentMode = 1
 is_pause = False
@@ -79,7 +79,7 @@ def warnings():
         time.sleep(1)
         GPIO.output(LED, GPIO.LOW)
         
-@app.route('/stopError', method=['POST'])
+@app.route('/stopError', methods=['POST'])
 def stopWarnings():
     global is_pause, is_error
     if is_pause == True and is_error == True:
@@ -235,30 +235,35 @@ def cleanup():
     GPIO.cleanup()
     return "GPIO cleaned up!"
 
-@app.route('/start')
+@app.route('/start', methods=['POST'])
 def start():
-    global currentMode, running_thread
+    global currentMode, running_thread, is_pause
     if currentMode == 1:        
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
         running_thread = threading.Thread(target=run_function_1)
         running_thread.start()
+        is_pause = False
+        return jsonify(success=True, message="The mode 1 we be continue.")
     elif currentMode == 2:
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
         running_thread = threading.Thread(target=run_function_2)
         running_thread.start()
-    return render_template('index.html')
+        is_pause = False
+        return jsonify(success=True, message="The mode 2 we be continue.")
+    else:
+        return jsonify(success=False, message="Can't continue, please check!")
 
-@app.route('/pause')
+@app.route('/pause', methods=['POST'])
 def pasuse():
     global is_pause
     stop_motors()
     stop_vacuum_motor()
     is_pause = True
-    return render_template('index.html')
+    return jsonify(success=True, message="The robot is stopped.")
 
 @app.route('/vacuum', methods=['POST'])
 def set_control_vacuum():
@@ -268,39 +273,37 @@ def set_control_vacuum():
         vacuumMotorDutyCycle = power
         # pwmV.ChangeDutyCycle(0 if power == 49 else power)
         pwmV.ChangeDutyCycle(power)
+        return jsonify(success=True, message="The vacuum power is changed.")
     else:
-        print('Power value is None!')
-    return render_template('index.html')
+        return jsonify(success=False, message="Some wrong, please check!")
 
 @app.route('/startVacuum')
 def startVacuum():
     start_vacuum_motor()
-    return render_template('index.html')
+    return jsonify(success=True, message="The vacuum is started.")
 
 @app.route('/stopVacuum')
 def stopVacuum():
     stop_vacuum_motor()
-    return render_template('index.html')
+    return jsonify(success=True, message="The vacuum is stopped.")
 
-@app.route('/changeToMode1')
+@app.route('/changeToMode1', methods=['POST'])
 def mode1Btn_callback():
     global currentMode, running_thread
     if currentMode != 1:
         currentMode = 1
         stop()
-        print("change current mode to 1")
         
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
         running_thread = threading.Thread(target=run_function_1)
         running_thread.start()
+        return jsonify(success=True, message="Will change to mode 1")
     else:
-        print('button 1 function already')
-        return render_template('index.html')
-    return render_template('index.html')
+        return jsonify(success=False, message="Mode 1 is already")
 
-@app.route('/changeToMode2')
+@app.route('/changeToMode2', methods=['POST'])
 def mode2Btn_callback():
     global currentMode, running_thread
     if currentMode != 2:
@@ -313,10 +316,9 @@ def mode2Btn_callback():
             
         running_thread = threading.Thread(target=run_function_2)
         running_thread.start()
+        return jsonify(success=True, message="Will change to mode 2")
     else:
-        print('button 2 function already')
-        return render_template('index.html')
-    return render_template('index.html')
+        return jsonify(success=False, message="Mode 2 is already")
 
 distance_data = []
 def measure_distance(fDistance, leftDistance, rightDistance):
@@ -328,13 +330,11 @@ def measure_distance(fDistance, leftDistance, rightDistance):
     if distance_data and is_error == False:
         average_distance = sum(distance_data) / len(distance_data)
         if average_distance <= 10:
-            print('error')
+            print('error: avgDistance ', average_distance)
             stop_motors()
             stop_vacuum_motor()
             is_pause = True
-        else:
-            print('no error')
-            
+            is_error = True
         if len(distance_data) >= 30:
             distance_data.clear()
         
