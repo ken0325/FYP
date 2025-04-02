@@ -4,6 +4,7 @@ import RPi.GPIO as GPIO
 import time
 import threading
 from threading import Timer
+import requests
 
 # GPIO setup
 GPIO.setwarnings(False)
@@ -71,6 +72,28 @@ is_error = False
 LED = 40
 GPIO.setup(LED, GPIO.OUT)
 
+error_messages = []
+@app.route('/send_error', methods=['POST'])
+def send_error():
+    data = request.json
+    if 'message' in data:
+        error_messages.append(data['message'])
+        return jsonify(success=True), 200
+    return jsonify(success=False), 400
+
+@app.route('/get_errors', methods=['GET'])
+def get_errors():
+    return jsonify(errors=error_messages)
+
+def report_error(message):
+    url = 'http://192.168.128.70:5000/send_error'
+    try:
+        response = requests.post(url, json={'message': message})
+        if response.status_code != 200:
+            print("Failed to report error")
+    except Exception as e:
+        print("Error while reporting:", e)
+
 def warnings():
     global is_error
     while is_error == True:
@@ -81,13 +104,15 @@ def warnings():
         
 @app.route('/stopError', methods=['POST'])
 def stopWarnings():
-    global is_pause, is_error
+    global is_pause, is_error, error_messages
     if is_pause == True and is_error == True:
         is_error = False
         is_pause = False
         GPIO.output(LED, GPIO.LOW)
         start_vacuum_motor()
         start_motors()
+        error_messages.clear()
+        start()
         return jsonify(success=True, message="The operation was successful and normal operation has been resumed.")
     else:
         return jsonify(success=False, message="There is no any errors!")
@@ -237,8 +262,11 @@ def cleanup():
 
 @app.route('/start', methods=['POST'])
 def start():
-    global currentMode, running_thread, is_pause
-    if currentMode == 1:        
+    global currentMode, running_thread, is_pause, is_error
+    if is_error == True:
+        return jsonify(success=False, message="Is something error, please check & pass the stop error button!")
+
+    if currentMode == 1 and is_pause == True:
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
@@ -246,7 +274,7 @@ def start():
         running_thread.start()
         is_pause = False
         return jsonify(success=True, message="The mode 1 we be continue.")
-    elif currentMode == 2:
+    elif currentMode == 2 and is_pause == True:
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
@@ -260,10 +288,13 @@ def start():
 @app.route('/pause', methods=['POST'])
 def pasuse():
     global is_pause
-    stop_motors()
-    stop_vacuum_motor()
-    is_pause = True
-    return jsonify(success=True, message="The robot is stopped.")
+    if is_pause == False:
+        stop_motors()
+        stop_vacuum_motor()
+        is_pause = True
+        return jsonify(success=True, message="The robot is stopped.")
+    else:
+        return jsonify(success=False, message="The robot is already stopped.")
 
 @app.route('/vacuum', methods=['POST'])
 def set_control_vacuum():
@@ -333,8 +364,10 @@ def measure_distance(fDistance, leftDistance, rightDistance):
             print('error: avgDistance ', average_distance)
             stop_motors()
             stop_vacuum_motor()
+            report_error("The robot is stuck. Please check!")
             is_pause = True
             is_error = True
+            warnings()
         if len(distance_data) >= 30:
             distance_data.clear()
         
@@ -423,44 +456,44 @@ def mode2():
         distanceF = getdistance()
         distanceL = getdistanceleft()
         distanceR = getdistanceright()
-        maxDistance = 0
+        # maxDistance = 0
         
         if (distanceF > distanceL) and (distanceF > distanceR):
-            print('forward')
-            maxDistance = distanceF
+            # print('forward')
+            # maxDistance = distanceF
             forward()
             current_state = "forward"
         elif (distanceL > distanceF) and (distanceL > distanceR):
-            print('left')
-            maxDistance = distanceL
+            # print('left')
+            # maxDistance = distanceL
             left()
             current_state = "left"
         else:
-            print('right')
-            maxDistance = distanceR
+            # print('right')
+            # maxDistance = distanceR
             right()
             current_state = "right"
             
-        if maxDistance > 50:
-            target_speed = 100  # 距離大於50 cm時，設定最大速度
-        elif maxDistance > 30:
-            target_speed = 70   # 距離在30-50 cm之間，設定較低速度
-        elif maxDistance > 10:
-            target_speed = 30   # 距離在10-30 cm之間，設定更低速度
-        else:
-            target_speed = 0    # 距離小於10 cm時，停止
+        # if maxDistance > 50:
+        #     target_speed = 100  # 距離大於50 cm時，設定最大速度
+        # elif maxDistance > 30:
+        #     target_speed = 70   # 距離在30-50 cm之間，設定較低速度
+        # elif maxDistance > 10:
+        #     target_speed = 30   # 距離在10-30 cm之間，設定更低速度
+        # else:
+        #     target_speed = 0    # 距離小於10 cm時，停止
 
-        # 平滑調整速度
-        if current_speed < target_speed:
-            current_speed += 5  # 每次增加5%
-        elif current_speed > target_speed:
-            current_speed -= 5  # 每次減少5%
+        # # 平滑調整速度
+        # if current_speed < target_speed:
+        #     current_speed += 5  # 每次增加5%
+        # elif current_speed > target_speed:
+        #     current_speed -= 5  # 每次減少5%
 
-        # 確保速度在0到100範圍內
-        current_speed = max(0, min(100, current_speed))
+        # # 確保速度在0到100範圍內
+        # current_speed = max(0, min(100, current_speed))
         
-        pwmL.ChangeDutyCycle(current_speed)  # 更新PWM信號
-        pwmR.ChangeDutyCycle(current_speed)  # 更新PWM信號
+        # pwmL.ChangeDutyCycle(current_speed)  # 更新PWM信號
+        # pwmR.ChangeDutyCycle(current_speed)  # 更新PWM信號
         
         time.sleep(0.1)
 

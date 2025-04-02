@@ -169,6 +169,20 @@
           errorDiv.style.display = "none";
         }, duration);
       }
+
+      function fetchErrors() {
+          fetch('/get_errors')
+              .then(response => response.json())
+              .then(data => {
+                  const errorDiv = document.getElementById("errorMessages");
+                  errorDiv.textContent = data.errors.join("\n"); // 顯示錯誤訊息
+                  errorDiv.style.display = data.errors.length > 0 ? "block" : "none"; // 根據是否有錯誤顯示
+              })
+              .catch(error => console.error("Error fetching errors:", error));
+      }
+
+      // 定期獲取錯誤訊息
+      setInterval(fetchErrors, 5000); // 每5秒獲取一次
     </script>
   </body>
 </html>
