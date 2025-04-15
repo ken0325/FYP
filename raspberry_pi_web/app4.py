@@ -310,21 +310,41 @@ def set_control_vacuum():
 
 @app.route('/startVacuum')
 def startVacuum():
-    start_vacuum_motor()
-    return jsonify(success=True, message="The vacuum is started.")
+    global is_pause, is_error
+    if is_error == True:
+        return jsonify(success=False, message="Is something error, please check & pass the stop error button!")
+    
+    if is_pause == False:
+        start_vacuum_motor()
+        return jsonify(success=True, message="The vacuum is started.")
+    else:
+        return jsonify(success=False, message="The Robot is stopped.")
 
 @app.route('/stopVacuum')
 def stopVacuum():
-    stop_vacuum_motor()
-    return jsonify(success=True, message="The vacuum is stopped.")
+    global is_pause, is_error
+    if is_error == True:
+        return jsonify(success=False, message="Is something error, please check & pass the stop error button!")
+    
+    if is_pause == False:
+        stop_vacuum_motor()
+        return jsonify(success=True, message="The vacuum is stopped.")
+    else:
+        return jsonify(success=False, message="The Robot is stopped.")
 
 @app.route('/changeToMode1', methods=['POST'])
 def mode1Btn_callback():
-    global currentMode, running_thread
+    global currentMode, running_thread, is_pause, is_error, distance_data
+    if is_pause == True:
+        return jsonify(success=False, message="The Robot is stopped.")
+    
+    if is_error == True:
+        return jsonify(success=False, message="Is something error, please check & pass the stop error button!")
+        
     if currentMode != 1:
         currentMode = 1
         stop()
-        
+        distance_data.clear()
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
@@ -336,12 +356,19 @@ def mode1Btn_callback():
 
 @app.route('/changeToMode2', methods=['POST'])
 def mode2Btn_callback():
-    global currentMode, running_thread
+    global currentMode, running_thread, is_pause, is_error, distance_data
+    
+    if is_pause == True:
+        return jsonify(success=False, message="The Robot is stopped.")
+    
+    if is_error == True:
+        return jsonify(success=False, message="Is something error, please check & pass the stop error button!")
+    
     if currentMode != 2:
         currentMode = 2
         stop()
-        print("change current mode to 2")
-        
+        # print("change current mode to 2")
+        distance_data.clear()
         if running_thread is not None and running_thread.is_alive():
             running_thread.join()
             
@@ -375,7 +402,6 @@ def measure_distance(fDistance, leftDistance, rightDistance):
         # t.start()
     # else:
         # t.cancel()
-        
 
 def mode1():
     global is_pause
@@ -457,7 +483,7 @@ def mode2():
         distanceL = getdistanceleft()
         distanceR = getdistanceright()
         # maxDistance = 0
-        
+        measure_distance(distanceF, distanceL, distanceR)
         if (distanceF > distanceL) and (distanceF > distanceR):
             # print('forward')
             # maxDistance = distanceF
