@@ -1,4 +1,4 @@
-latest 1/10/2025
+
 
 Install Raspberry Pi OS using Raspberry Pi Imager https://www.raspberrypi.com/software/
 Prepare micoreSD Card and adapter
